@@ -1,0 +1,4 @@
+./brapi_macro.go
+./sgs.go
+./brapi_macro_test.go
+./sgs_test.go

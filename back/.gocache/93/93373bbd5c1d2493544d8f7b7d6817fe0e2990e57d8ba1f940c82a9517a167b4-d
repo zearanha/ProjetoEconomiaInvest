@@ -1,0 +1,5 @@
+./fixed_income.go
+./news.go
+./quotes.go
+./fixed_income_test.go
+./news_test.go

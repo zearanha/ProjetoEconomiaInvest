@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-painel}
+      POSTGRES_USER: ${POSTGRES_USER:-painel}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-senha}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  api:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      HTTP_ADDR: ":8080"
+      DATABASE_URL: postgres://${POSTGRES_USER:-painel}:${POSTGRES_PASSWORD:-senha}@db:5432/${POSTGRES_DB:-painel}?sslmode=disable
+      PROVIDER_TIMEOUT: 8s
+      NEWS_REFRESH_INTERVAL: 5m
+      QUOTES_REFRESH_INTERVAL: 30s
+      STOCK_SYMBOLS: ${STOCK_SYMBOLS:-PETR4,VALE3,ITUB4,MGLU3}
+      MACRO_PROVIDER: ${MACRO_PROVIDER:-bcb}
+      BRAPI_TOKEN: ${BRAPI_TOKEN:-}
+    ports:
+      - "8080:8080"
+
+  front:
+    build:
+      context: ./front
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "3000:80"
+
+volumes:
+  postgres_data:
