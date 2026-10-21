@@ -22,5 +22,6 @@ export default function App(){
  {section==='overview'&&<Overview quotes={allQuotes} quoteState={displayQuoteState} rates={ratesState.data?.data??[]} ratesError={ratesState.error} news={newsState.data?.data??[]} newsError={newsState.error} watchlist={watchlist} toggleWatch={toggleWatch} moveWatch={moveWatch} go={setSection}/>}
  {section in marketBySection&&<MarketPage market={marketBySection[section as keyof typeof marketBySection]} state={displayQuoteState[section as keyof typeof displayQuoteState]} watchlist={watchlist} toggleWatch={toggleWatch}/>}
  {section==='fixed-income'&&<FixedIncomePage rates={ratesState.data?.data??[]} error={ratesState.error} loading={ratesState.loading}/>}
- {section==='news'&&<NewsPage state={newsState} category={newsCategory} setCategory={value=>{setNewsCategory(value);setNewsPage(1)}} query={newsSearch} setQuery={value=>{setNewsSearch(value);setNewsPage(1)}} page={newsPage} setPage={setNewsPage}/>}<footer>Fontes de mercado conectadas � Valores informativos e sujeitos a atualiza��o dos provedores.</footer></div></main></div>
+ {section==='news'&&<NewsPage state={newsState} category={newsCategory} setCategory={value=>{setNewsCategory(value);setNewsPage(1)}} query={newsSearch} setQuery={value=>{setNewsSearch(value);setNewsPage(1)}} page={newsPage} setPage={setNewsPage}/>}<footer>Fontes de mercado conectadas · Cripto via CoinGecko · Binance como alternativa · Câmbio de referência diário via Frankfurter · Valores informativos sujeitos à atualização dos provedores.</footer></div></main></div>
 }
+

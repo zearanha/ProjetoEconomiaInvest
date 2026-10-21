@@ -28,7 +28,7 @@ func Load() Config {
 		HTTPAddr:              addr,
 		ProviderTimeout:       durationOr("PROVIDER_TIMEOUT", 8*time.Second),
 		NewsRefreshInterval:   durationOr("NEWS_REFRESH_INTERVAL", 5*time.Minute),
-		QuotesRefreshInterval: durationOr("QUOTES_REFRESH_INTERVAL", 30*time.Second),
+		QuotesRefreshInterval: durationOr("QUOTES_REFRESH_INTERVAL", time.Minute),
 		BrapiToken:            os.Getenv("BRAPI_TOKEN"),
 		MacroProvider:         envOr("MACRO_PROVIDER", "bcb"),
 		StockSymbols:          os.Getenv("STOCK_SYMBOLS"),

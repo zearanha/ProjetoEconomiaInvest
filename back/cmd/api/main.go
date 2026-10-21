@@ -31,8 +31,16 @@ func main() {
 
 	client := &http.Client{Timeout: cfg.ProviderTimeout}
 	quotes := service.NewQuotes(
-		cryptoprovider.NewBinance(client, cfg.CryptoSymbols),
-		fxprovider.NewAwesomeAPI(client),
+		providers.Fallback{
+			Primary:   cryptoprovider.NewCoinGecko(client, cfg.CryptoSymbols),
+			Secondary: cryptoprovider.NewBinance(client, cfg.CryptoSymbols),
+			Market:    "crypto",
+		},
+		providers.Fallback{
+			Primary:   fxprovider.NewFrankfurter(client),
+			Secondary: fxprovider.NewAwesomeAPI(client),
+			Market:    "fx",
+		},
 		stockprovider.NewBrapi(client, cfg.BrapiToken, cfg.StockSymbols),
 	)
 	var quoteHistory repository.QuoteHistory = repository.NewMemoryQuoteHistory()
