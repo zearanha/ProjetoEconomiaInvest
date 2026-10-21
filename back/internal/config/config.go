@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"time"
 )
@@ -15,11 +16,16 @@ type Config struct {
 	StockSymbols          string
 	CryptoSymbols         string
 	DatabaseURL           string
+	FrontendOrigin        string
 }
 
 func Load() Config {
+	addr := os.Getenv("HTTP_ADDR")
+	if addr == "" {
+		addr = fmt.Sprintf(":%s", envOr("PORT", "8080"))
+	}
 	return Config{
-		HTTPAddr:              envOr("HTTP_ADDR", ":8080"),
+		HTTPAddr:              addr,
 		ProviderTimeout:       durationOr("PROVIDER_TIMEOUT", 8*time.Second),
 		NewsRefreshInterval:   durationOr("NEWS_REFRESH_INTERVAL", 5*time.Minute),
 		QuotesRefreshInterval: durationOr("QUOTES_REFRESH_INTERVAL", 30*time.Second),
@@ -28,6 +34,7 @@ func Load() Config {
 		StockSymbols:          os.Getenv("STOCK_SYMBOLS"),
 		CryptoSymbols:         os.Getenv("CRYPTO_SYMBOLS"),
 		DatabaseURL:           os.Getenv("DATABASE_URL"),
+		FrontendOrigin:        os.Getenv("FRONTEND_ORIGIN"),
 	}
 }
 

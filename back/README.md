@@ -11,6 +11,8 @@ go run ./cmd/api
 
 Sem `DATABASE_URL`, notícias e histórico de cotações ficam em memória e são perdidos ao reiniciar a API. Para persistir ambos em PostgreSQL, configure `DATABASE_URL` antes de iniciar. O Compose da raiz sobe a API e o banco.
 
+O servidor usa `PORT` quando `HTTP_ADDR` não está definido (Render fornece essa variável e exige que o serviço escute nela). No deploy Render, `FRONTEND_ORIGIN` deve conter a URL HTTPS do site estático; ela libera chamadas REST e o WebSocket apenas para esse frontend.
+
 O endpoint `GET /ws` publica mensagens JSON no formato `{ "type": "quotes", "market": "crypto", "data": [...], "updatedAt": "..." }`. Por padrão, a API consulta os três provedores a cada 30 segundos (`QUOTES_REFRESH_INTERVAL`) e envia também o último snapshot assim que um cliente se conecta. Os provedores são consultados por polling; isso não é um stream direto da Binance.
 
 O provedor Binance lista por padrão 20 pares contra USDT. Você pode substituir a lista com `CRYPTO_SYMBOLS`, por exemplo `BTCUSDT,ETHUSDT,DOGEUSDT`. Para ações, a API pública da brapi fornece 50 ações ordenadas por volume sem chave. Defina `STOCK_SYMBOLS` para pedir tickers específicos; essa seleção usa a chave `BRAPI_TOKEN` quando configurada.

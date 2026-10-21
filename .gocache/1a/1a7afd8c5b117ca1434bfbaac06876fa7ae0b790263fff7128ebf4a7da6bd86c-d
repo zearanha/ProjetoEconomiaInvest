@@ -1,0 +1,4 @@
+./news_memory.go
+./postgres_news.go
+./postgres_quote_history.go
+./quote_history.go

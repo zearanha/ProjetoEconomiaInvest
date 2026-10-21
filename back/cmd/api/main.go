@@ -76,9 +76,9 @@ func main() {
 	}
 	quotes.SetHistory(quoteHistory)
 	newsService := service.NewNews(rssprovider.NewProvider(client), newsRepo)
-	quoteHub := ws.NewHub()
+	quoteHub := ws.NewHub(cfg.FrontendOrigin)
 	server := &http.Server{
-		Addr: cfg.HTTPAddr, Handler: httpapi.NewServer(quotes, fixedIncome, newsService, quoteHub, logger),
+		Addr: cfg.HTTPAddr, Handler: httpapi.NewServer(quotes, fixedIncome, newsService, quoteHub, logger, cfg.FrontendOrigin),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: painel-mercado-api
+    runtime: docker
+    plan: free
+    region: ohio
+    dockerfilePath: ./back/Dockerfile
+    dockerContext: ./back
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: painel-mercado-db
+          property: connectionString
+      - key: FRONTEND_ORIGIN
+        value: .onrender.com
+      - key: PROVIDER_TIMEOUT
+        value: 8s
+      - key: NEWS_REFRESH_INTERVAL
+        value: 5m
+      - key: QUOTES_REFRESH_INTERVAL
+        value: 30s
+      - key: MACRO_PROVIDER
+        value: bcb
+
+  - type: web
+    name: painel-mercado-front
+    runtime: static
+    rootDir: front
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_BASE_URL
+        fromService:
+          type: web
+          name: painel-mercado-api
+          envVarKey: RENDER_EXTERNAL_URL
+
+databases:
+  - name: painel-mercado-db
+    plan: free
+    databaseName: painel_mercado
+    user: painel_mercado
+    region: ohio

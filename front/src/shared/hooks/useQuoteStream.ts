@@ -20,8 +20,12 @@ export function useQuoteStream() {
     function connect() {
       if (stopped) return
       setStatus(attempts === 0 ? 'connecting' : 'reconnecting')
-      const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      socket = new WebSocket(`${scheme}//${window.location.host}/ws`)
+      const apiBaseURL = import.meta.env.VITE_API_BASE_URL
+      const localScheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const streamURL = apiBaseURL
+        ? `${apiBaseURL.replace(/^http/, 'ws').replace(/\/$/, '')}/ws`
+        : `${localScheme}//${window.location.host}/ws`
+      socket = new WebSocket(streamURL)
 
       socket.onopen = () => {
         attempts = 0

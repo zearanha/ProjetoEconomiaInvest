@@ -1,4 +1,4 @@
-# Painel de Mercado
+﻿# Painel de Mercado
 
 O repositório está dividido em duas aplicações independentes:
 
@@ -35,3 +35,10 @@ docker compose up --build
 O Compose inicia PostgreSQL, API e frontend. Abra `http://localhost:3000`; as chamadas `/api`, `/health` e `/ws` passam pelo proxy do frontend até a API. A API continua exposta em `http://localhost:8080` para chamadas diretas. O WebSocket envia snapshots de cotações consultados periodicamente nos provedores.
 
 O padrão inclui 20 pares de cripto contra USDT e 50 ações ordenadas por volume via lista pública da brapi. `CRYPTO_SYMBOLS` e `STOCK_SYMBOLS` permitem personalizar as listas; a chave `BRAPI_TOKEN` é usada para buscar tickers específicos.
+
+## Publicar no Render
+
+O arquivo `render.yaml` configura o frontend React como site estático, a API Go como web service e um PostgreSQL gerenciado. Envie o repositório para GitHub/GitLab, crie um Blueprint no Render apontando para o repositório e confirme os três recursos. O Blueprint conecta banco, API, frontend e WebSocket automaticamente.
+
+Para instruções e limitações do plano gratuito, consulte a [documentação do Render](https://render.com/docs/free). O PostgreSQL gratuito expira após 30 dias; atualize o banco para um plano pago antes da expiração para manter o histórico.
+

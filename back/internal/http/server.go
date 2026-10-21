@@ -6,6 +6,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -15,15 +16,16 @@ import (
 )
 
 type Server struct {
-	quotes      *service.Quotes
-	fixedIncome *service.FixedIncome
-	news        *service.News
-	updates     *ws.Hub
-	logger      *slog.Logger
+	quotes         *service.Quotes
+	fixedIncome    *service.FixedIncome
+	news           *service.News
+	updates        *ws.Hub
+	logger         *slog.Logger
+	frontendOrigin string
 }
 
-func NewServer(quotes *service.Quotes, fixedIncome *service.FixedIncome, news *service.News, updates *ws.Hub, logger *slog.Logger) http.Handler {
-	s := &Server{quotes: quotes, fixedIncome: fixedIncome, news: news, updates: updates, logger: logger}
+func NewServer(quotes *service.Quotes, fixedIncome *service.FixedIncome, news *service.News, updates *ws.Hub, logger *slog.Logger, frontendOrigin string) http.Handler {
+	s := &Server{quotes: quotes, fixedIncome: fixedIncome, news: news, updates: updates, logger: logger, frontendOrigin: strings.TrimRight(frontendOrigin, "/")}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /api/quotes", s.getQuotes)
@@ -32,7 +34,45 @@ func NewServer(quotes *service.Quotes, fixedIncome *service.FixedIncome, news *s
 	mux.HandleFunc("POST /api/fixed-income/simulate", s.simulateFixedIncome)
 	mux.HandleFunc("GET /api/news", s.getNews)
 	mux.Handle("GET /ws", updates)
-	return s.logging(recoverer(mux))
+	return s.logging(recoverer(s.cors(mux)))
+}
+
+func (s *Server) cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s.frontendOrigin == "" {
+			next.ServeHTTP(w, r)
+			return
+		}
+		origin := strings.TrimRight(r.Header.Get("Origin"), "/")
+		if !isAllowedOrigin(origin, s.frontendOrigin) {
+			if r.Method == http.MethodOptions || origin != "" {
+				writeJSON(w, http.StatusForbidden, map[string]string{"error": "origem não permitida"})
+				return
+			}
+			next.ServeHTTP(w, r)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+		w.Header().Set("Vary", "Origin")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isAllowedOrigin(origin, allowed string) bool {
+	if origin == allowed {
+		return true
+	}
+	if !strings.HasPrefix(allowed, ".") {
+		return false
+	}
+	parsed, err := url.Parse(origin)
+	return err == nil && parsed.Scheme == "https" && strings.HasSuffix(parsed.Hostname(), allowed)
 }
 
 func (s *Server) getQuoteHistory(w http.ResponseWriter, r *http.Request) {

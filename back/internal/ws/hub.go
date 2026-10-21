@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,9 +14,10 @@ import (
 
 // Hub distributes the latest quote updates to connected browser clients.
 type Hub struct {
-	mu      sync.RWMutex
-	clients map[*client]struct{}
-	latest  map[string][]byte
+	mu             sync.RWMutex
+	clients        map[*client]struct{}
+	latest         map[string][]byte
+	originPatterns []string
 }
 
 type client struct {
@@ -30,8 +33,19 @@ type QuoteUpdate struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
-func NewHub() *Hub {
-	return &Hub{clients: make(map[*client]struct{}), latest: make(map[string][]byte)}
+func NewHub(allowedOrigins ...string) *Hub {
+	originPatterns := []string{"localhost:*", "127.0.0.1:*"}
+	for _, origin := range allowedOrigins {
+		if strings.HasPrefix(origin, ".") {
+			originPatterns = append(originPatterns, "*"+origin)
+			continue
+		}
+		parsed, err := url.Parse(origin)
+		if err == nil && parsed.Hostname() != "" {
+			originPatterns = append(originPatterns, parsed.Hostname())
+		}
+	}
+	return &Hub{clients: make(map[*client]struct{}), latest: make(map[string][]byte), originPatterns: originPatterns}
 }
 
 // Publish sends an update to every subscriber. A slow client receives the
@@ -67,9 +81,7 @@ func enqueue(queue chan []byte, payload []byte) {
 }
 
 func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"localhost:*", "127.0.0.1:*"},
-	})
+	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{OriginPatterns: h.originPatterns})
 	if err != nil {
 		return
 	}

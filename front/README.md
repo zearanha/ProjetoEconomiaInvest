@@ -29,6 +29,8 @@ Novas páginas devem ficar em `features/`; estado e visual reutilizados entre á
 
 O Vite encaminha `/api` e `/health` para a API local e `/ws` para o WebSocket. As cotações usam o fluxo WebSocket com reconexão automática e polling REST como fallback (30 segundos para cripto, 60 segundos para outros mercados); taxas e notícias atualizam a cada 5 minutos.
 
+Em produção, configure `VITE_API_BASE_URL` para a URL HTTPS pública da API. As chamadas REST e o WebSocket usam esse endereço. O `render.yaml` já fornece a variável ao compilar o site.
+
 Para subir frontend, API e PostgreSQL em contêineres, use `docker compose up --build` na raiz do projeto e abra `http://localhost:3000`.
 
 ## Desenvolvimento (PowerShell)
