@@ -12,6 +12,7 @@ type Config struct {
 	NewsRefreshInterval   time.Duration
 	QuotesRefreshInterval time.Duration
 	BrapiToken            string
+	CoinGeckoAPIKey       string
 	MacroProvider         string
 	StockSymbols          string
 	CryptoSymbols         string
@@ -30,6 +31,7 @@ func Load() Config {
 		NewsRefreshInterval:   durationOr("NEWS_REFRESH_INTERVAL", 5*time.Minute),
 		QuotesRefreshInterval: durationOr("QUOTES_REFRESH_INTERVAL", time.Minute),
 		BrapiToken:            os.Getenv("BRAPI_TOKEN"),
+		CoinGeckoAPIKey:       os.Getenv("COINGECKO_API_KEY"),
 		MacroProvider:         envOr("MACRO_PROVIDER", "bcb"),
 		StockSymbols:          os.Getenv("STOCK_SYMBOLS"),
 		CryptoSymbols:         os.Getenv("CRYPTO_SYMBOLS"),

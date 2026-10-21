@@ -19,10 +19,11 @@ const coinGeckoURL = "https://api.coingecko.com/api/v3/coins/markets"
 type CoinGecko struct {
 	client  *http.Client
 	symbols []string
+	apiKey  string
 }
 
-func NewCoinGecko(client *http.Client, configured string) *CoinGecko {
-	return &CoinGecko{client: client, symbols: parseSymbols(configured)}
+func NewCoinGecko(client *http.Client, configured, apiKey string) *CoinGecko {
+	return &CoinGecko{client: client, symbols: parseSymbols(configured), apiKey: apiKey}
 }
 
 type marketCoin struct {
@@ -66,6 +67,9 @@ func (c *CoinGecko) Quotes(ctx context.Context) ([]domain.Quote, error) {
 		return nil, fmt.Errorf("criar requisição CoinGecko: %w", err)
 	}
 	request.Header.Set("Accept", "application/json")
+	if c.apiKey != "" {
+		request.Header.Set("x-cg-demo-api-key", c.apiKey)
+	}
 	response, err := c.client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("consultar CoinGecko: %w", err)

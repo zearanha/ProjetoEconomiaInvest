@@ -32,9 +32,13 @@ func main() {
 	client := &http.Client{Timeout: cfg.ProviderTimeout}
 	quotes := service.NewQuotes(
 		providers.Fallback{
-			Primary:   cryptoprovider.NewCoinGecko(client, cfg.CryptoSymbols),
-			Secondary: cryptoprovider.NewBinance(client, cfg.CryptoSymbols),
-			Market:    "crypto",
+			Primary: cryptoprovider.NewCoinLore(client, cfg.CryptoSymbols),
+			Secondary: providers.Fallback{
+				Primary:   cryptoprovider.NewCoinGecko(client, cfg.CryptoSymbols, cfg.CoinGeckoAPIKey),
+				Secondary: cryptoprovider.NewBinance(client, cfg.CryptoSymbols),
+				Market:    "crypto",
+			},
+			Market: "crypto",
 		},
 		providers.Fallback{
 			Primary:   fxprovider.NewFrankfurter(client),
