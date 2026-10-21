@@ -15,9 +15,40 @@ import (
 
 const baseURL = "https://api.binance.com/api/v3/ticker/24hr"
 
-type Binance struct{ client *http.Client }
+type Binance struct {
+	client  *http.Client
+	symbols []string
+}
 
-func NewBinance(client *http.Client) *Binance { return &Binance{client: client} }
+var defaultSymbols = []string{
+	"BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT", "DOGEUSDT", "TRXUSDT",
+	"ADAUSDT", "LINKUSDT", "AVAXUSDT", "LTCUSDT", "DOTUSDT", "BCHUSDT", "ETCUSDT",
+	"XLMUSDT", "ATOMUSDT", "UNIUSDT", "NEARUSDT", "FILUSDT", "SHIBUSDT",
+}
+
+func NewBinance(client *http.Client, configured string) *Binance {
+	return &Binance{client: client, symbols: parseSymbols(configured)}
+}
+
+func parseSymbols(value string) []string {
+	seen := make(map[string]struct{})
+	symbols := make([]string, 0)
+	for _, part := range strings.Split(value, ",") {
+		symbol := strings.ToUpper(strings.TrimSpace(part))
+		if symbol == "" {
+			continue
+		}
+		if _, exists := seen[symbol]; exists {
+			continue
+		}
+		seen[symbol] = struct{}{}
+		symbols = append(symbols, symbol)
+	}
+	if len(symbols) == 0 {
+		return append([]string(nil), defaultSymbols...)
+	}
+	return symbols
+}
 
 type ticker struct {
 	Symbol             string `json:"symbol"`
@@ -32,7 +63,11 @@ type ticker struct {
 
 func (b *Binance) Quotes(ctx context.Context) ([]domain.Quote, error) {
 	params := url.Values{}
-	params.Set("symbols", `["BTCUSDT","ETHUSDT","SOLUSDT"]`)
+	encodedSymbols, err := json.Marshal(b.symbols)
+	if err != nil {
+		return nil, fmt.Errorf("codificar lista de símbolos Binance: %w", err)
+	}
+	params.Set("symbols", string(encodedSymbols))
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"?"+params.Encode(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("criar requisição Binance: %w", err)
@@ -61,7 +96,11 @@ func (b *Binance) Quotes(ctx context.Context) ([]domain.Quote, error) {
 			return nil, fmt.Errorf("converter ticker %s: %w", row.Symbol, err)
 		}
 		base := strings.TrimSuffix(row.Symbol, "USDT")
-		quotes = append(quotes, domain.Quote{Symbol: base, Name: base, Market: "crypto", Currency: "USDT", Price: price, Change: change, ChangePct: pct, Volume: volume, High: high, Low: low, UpdatedAt: time.UnixMilli(row.CloseTime).UTC()})
+		name := cryptoNames[base]
+		if name == "" {
+			name = base
+		}
+		quotes = append(quotes, domain.Quote{Symbol: base, Name: name, Market: "crypto", Currency: "USDT", Price: price, Change: change, ChangePct: pct, Volume: volume, High: high, Low: low, UpdatedAt: time.UnixMilli(row.CloseTime).UTC()})
 	}
 	return quotes, nil
 }
@@ -74,4 +113,12 @@ func firstError(errs ...error) error {
 		}
 	}
 	return nil
+}
+
+var cryptoNames = map[string]string{
+	"BTC": "Bitcoin", "ETH": "Ethereum", "BNB": "BNB", "XRP": "XRP", "SOL": "Solana",
+	"DOGE": "Dogecoin", "TRX": "TRON", "ADA": "Cardano", "LINK": "Chainlink", "AVAX": "Avalanche",
+	"LTC": "Litecoin", "DOT": "Polkadot", "BCH": "Bitcoin Cash", "ETC": "Ethereum Classic",
+	"XLM": "Stellar", "ATOM": "Cosmos", "UNI": "Uniswap", "NEAR": "NEAR Protocol",
+	"FIL": "Filecoin", "SHIB": "Shiba Inu",
 }

@@ -13,6 +13,7 @@ type Config struct {
 	BrapiToken            string
 	MacroProvider         string
 	StockSymbols          string
+	CryptoSymbols         string
 	DatabaseURL           string
 }
 
@@ -24,7 +25,8 @@ func Load() Config {
 		QuotesRefreshInterval: durationOr("QUOTES_REFRESH_INTERVAL", 30*time.Second),
 		BrapiToken:            os.Getenv("BRAPI_TOKEN"),
 		MacroProvider:         envOr("MACRO_PROVIDER", "bcb"),
-		StockSymbols:          envOr("STOCK_SYMBOLS", "PETR4,VALE3,ITUB4,MGLU3"),
+		StockSymbols:          os.Getenv("STOCK_SYMBOLS"),
+		CryptoSymbols:         os.Getenv("CRYPTO_SYMBOLS"),
 		DatabaseURL:           os.Getenv("DATABASE_URL"),
 	}
 }

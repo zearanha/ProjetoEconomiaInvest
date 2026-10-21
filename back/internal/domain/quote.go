@@ -16,6 +16,11 @@ type Quote struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+type QuotePoint struct {
+	Time  time.Time `json:"time"`
+	Price float64   `json:"price"`
+}
+
 type FixedIncomeRate struct {
 	Indicator string    `json:"indicator"`
 	Value     float64   `json:"value"`

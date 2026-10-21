@@ -13,6 +13,8 @@ import (
 )
 
 const baseURL = "https://brapi.dev/api/v2/stocks/quote"
+const publicListURL = "https://brapi.dev/api/quote/list"
+const publicListLimit = "50"
 
 type Brapi struct {
 	client  *http.Client
@@ -45,6 +47,10 @@ type result struct {
 }
 
 func (b *Brapi) Quotes(ctx context.Context) ([]domain.Quote, error) {
+	if b.token == "" || len(b.symbols) == 0 {
+		return b.publicQuotes(ctx)
+	}
+
 	query := url.Values{}
 	query.Set("symbols", strings.Join(b.symbols, ","))
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"?"+query.Encode(), nil)
@@ -84,16 +90,82 @@ func (b *Brapi) Quotes(ctx context.Context) ([]domain.Quote, error) {
 	return quotes, nil
 }
 
+type publicQuoteListResponse struct {
+	Stocks      []publicStock `json:"stocks"`
+	RequestedAt string        `json:"requestedAt"`
+}
+
+type publicStock struct {
+	Symbol string  `json:"stock"`
+	Name   string  `json:"name"`
+	Price  float64 `json:"close"`
+	Change float64 `json:"change"`
+	Volume float64 `json:"volume"`
+}
+
+func (b *Brapi) publicQuotes(ctx context.Context) ([]domain.Quote, error) {
+	query := url.Values{}
+	query.Set("limit", publicListLimit)
+	query.Set("sortBy", "volume")
+	query.Set("sortOrder", "desc")
+	query.Set("subType", "stock")
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, publicListURL+"?"+query.Encode(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("criar requisiÃ§Ã£o pÃºblica brapi: %w", err)
+	}
+	response, err := b.client.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("consultar lista pÃºblica brapi: %w", err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("lista pÃºblica brapi respondeu HTTP %d", response.StatusCode)
+	}
+	var body publicQuoteListResponse
+	if err := json.NewDecoder(response.Body).Decode(&body); err != nil {
+		return nil, fmt.Errorf("decodificar lista pÃºblica brapi: %w", err)
+	}
+	updatedAt, _ := time.Parse(time.RFC3339Nano, body.RequestedAt)
+	quotes := make([]domain.Quote, 0, len(body.Stocks))
+	for _, stock := range body.Stocks {
+		if len(b.symbols) > 0 && !containsSymbol(b.symbols, stock.Symbol) {
+			continue
+		}
+		previousClose := stock.Price - stock.Change
+		changePct := 0.0
+		if previousClose != 0 {
+			changePct = stock.Change / previousClose * 100
+		}
+		quotes = append(quotes, domain.Quote{
+			Symbol: stock.Symbol, Name: stock.Name, Market: "stocks", Currency: "BRL",
+			Price: stock.Price, Change: stock.Change, ChangePct: changePct,
+			Volume: stock.Volume, UpdatedAt: updatedAt.UTC(),
+		})
+	}
+	return quotes, nil
+}
+
 func splitSymbols(value string) []string {
 	parts := strings.Split(value, ",")
 	symbols := make([]string, 0, len(parts))
+	seen := make(map[string]struct{})
 	for _, part := range parts {
 		if symbol := strings.ToUpper(strings.TrimSpace(part)); symbol != "" {
+			if _, exists := seen[symbol]; exists {
+				continue
+			}
+			seen[symbol] = struct{}{}
 			symbols = append(symbols, symbol)
 		}
 	}
-	if len(symbols) == 0 {
-		return []string{"PETR4", "VALE3", "ITUB4", "MGLU3"}
-	}
 	return symbols
+}
+
+func containsSymbol(symbols []string, symbol string) bool {
+	for _, candidate := range symbols {
+		if candidate == symbol {
+			return true
+		}
+	}
+	return false
 }

@@ -3,6 +3,7 @@ export type Quote = {
   price: number; change: number; changePct: number; volume?: number
   high?: number; low?: number; updatedAt: string
 }
+export type QuotePoint = { time: string; price: number }
 export type Rate = { indicator: string; value: number; unit: string; date: string; source: string }
 export type NewsItem = {
   id: string; title: string; source: string; publishedAt: string
@@ -30,6 +31,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function getQuotes(market: string) {
   return request<{ market: string; data: Quote[] }>(`/api/quotes?market=${encodeURIComponent(market)}`)
+}
+export async function getQuoteHistory(symbol: string, range: string) {
+  const params = new URLSearchParams({ symbol, range })
+  return request<{ symbol: string; data: QuotePoint[] }>(`/api/quotes/history?${params}`)
 }
 export async function getRates() { return request<{ data: Rate[] }>('/api/fixed-income/rates') }
 export async function getNews(category: string, q: string, page: number) {

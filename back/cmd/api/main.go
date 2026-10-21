@@ -31,10 +31,11 @@ func main() {
 
 	client := &http.Client{Timeout: cfg.ProviderTimeout}
 	quotes := service.NewQuotes(
-		cryptoprovider.NewBinance(client),
+		cryptoprovider.NewBinance(client, cfg.CryptoSymbols),
 		fxprovider.NewAwesomeAPI(client),
 		stockprovider.NewBrapi(client, cfg.BrapiToken, cfg.StockSymbols),
 	)
+	var quoteHistory repository.QuoteHistory = repository.NewMemoryQuoteHistory()
 	var rateProvider providers.Rates
 	switch strings.ToLower(cfg.MacroProvider) {
 	case "brapi":
@@ -59,10 +60,21 @@ func main() {
 		}
 		defer postgresRepo.Close()
 		newsRepo = postgresRepo
+		historyCtx, historyCancel := context.WithTimeout(context.Background(), 10*time.Second)
+		postgresHistory, historyErr := repository.NewPostgresQuoteHistory(historyCtx, cfg.DatabaseURL)
+		historyCancel()
+		if historyErr != nil {
+			logger.Error("falha ao iniciar histórico de cotações", "error", historyErr)
+			os.Exit(1)
+		}
+		defer postgresHistory.Close()
+		quoteHistory = postgresHistory
+		logger.Info("histórico persistente de cotações PostgreSQL ativado")
 		logger.Info("persistência de notícias PostgreSQL ativada")
 	} else {
 		logger.Warn("DATABASE_URL não configurada; notícias ficarão em memória")
 	}
+	quotes.SetHistory(quoteHistory)
 	newsService := service.NewNews(rssprovider.NewProvider(client), newsRepo)
 	quoteHub := ws.NewHub()
 	server := &http.Server{

@@ -27,11 +27,32 @@ func NewServer(quotes *service.Quotes, fixedIncome *service.FixedIncome, news *s
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.health)
 	mux.HandleFunc("GET /api/quotes", s.getQuotes)
+	mux.HandleFunc("GET /api/quotes/history", s.getQuoteHistory)
 	mux.HandleFunc("GET /api/fixed-income/rates", s.getFixedIncomeRates)
 	mux.HandleFunc("POST /api/fixed-income/simulate", s.simulateFixedIncome)
 	mux.HandleFunc("GET /api/news", s.getNews)
 	mux.Handle("GET /ws", updates)
 	return s.logging(recoverer(mux))
+}
+
+func (s *Server) getQuoteHistory(w http.ResponseWriter, r *http.Request) {
+	symbol := strings.ToUpper(strings.TrimSpace(r.URL.Query().Get("symbol")))
+	period := r.URL.Query().Get("range")
+	if symbol == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "symbol é obrigatório"})
+		return
+	}
+	if period == "" {
+		period = "1d"
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+	points, err := s.quotes.History(ctx, symbol, period)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "range deve ser 1d, 1w ou 1m"})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"symbol": symbol, "range": period, "data": points})
 }
 
 func (s *Server) getNews(w http.ResponseWriter, r *http.Request) {
