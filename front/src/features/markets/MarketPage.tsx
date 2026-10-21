@@ -13,6 +13,7 @@ export function MarketPage({ market, state, watchlist, toggleWatch }: { market: 
   const [sort, setSort] = useState('name')
   const [direction, setDirection] = useState('all')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [page, setPage] = useState(1)
   const [selected, setSelected] = useState('')
   const [range, setRange] = useState('1d')
   const [history, setHistory] = useState<QuotePoint[]>([])
@@ -22,6 +23,11 @@ export function MarketPage({ market, state, watchlist, toggleWatch }: { market: 
     const value = key === 'price' ? a.price - b.price : key === 'change' ? a.changePct - b.changePct : key === 'volume' ? (a.volume ?? 0) - (b.volume ?? 0) : a.name.localeCompare(b.name)
     return sort.endsWith('-desc') ? -value : value
   }), [quotes, query, sort, direction, favoritesOnly, watchlist])
+  const pageSize = 20
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
+  const visibleQuotes = filtered.slice((page - 1) * pageSize, page * pageSize)
+  useEffect(() => { setPage(1) }, [query, sort, direction, favoritesOnly])
+  useEffect(() => { if (page > pageCount) setPage(pageCount) }, [page, pageCount])
   useEffect(() => {
     if (!selected && quotes.length) setSelected(quotes[0].symbol)
     if (selected && !quotes.some((quote) => quote.symbol === selected)) setSelected(quotes[0]?.symbol ?? '')
@@ -32,7 +38,8 @@ export function MarketPage({ market, state, watchlist, toggleWatch }: { market: 
     <div className="market-controls"><input aria-label="Buscar ativo" placeholder="Buscar por nome ou símbolo" value={query} onChange={(e) => setQuery(e.target.value)} /><select aria-label="Ordenar ativos" value={sort} onChange={(e) => setSort(e.target.value)}><option value="name">Nome (A–Z)</option><option value="name-desc">Nome (Z–A)</option><option value="price">Preço (menor)</option><option value="price-desc">Preço (maior)</option><option value="change">Variação (menor)</option><option value="change-desc">Variação (maior)</option><option value="volume">Volume (menor)</option><option value="volume-desc">Volume (maior)</option></select><select aria-label="Filtrar variação" value={direction} onChange={(e) => setDirection(e.target.value)}><option value="all">Todas as variações</option><option value="up">Em alta</option><option value="down">Em baixa</option></select><label className="favorite-filter"><input type="checkbox" checked={favoritesOnly} onChange={(e) => setFavoritesOnly(e.target.checked)} /> Acompanhados</label></div>
     {selected && <div className="chart-panel"><div className="chart-heading"><strong>Histórico · {selected}</strong><div>{[['1d','1 dia'],['1w','1 semana'],['1m','1 mês']].map(([value,label]) => <button key={value} className={range === value ? 'selected' : ''} onClick={() => setRange(value)}>{label}</button>)}</div></div><QuoteChart points={history} /></div>}
     <AlertsPanel />
-    <QuoteTable quotes={filtered} watchlist={watchlist} toggleWatch={toggleWatch} loading={state.loading} error={state.error} />
+    <QuoteTable quotes={visibleQuotes} watchlist={watchlist} toggleWatch={toggleWatch} loading={state.loading} error={state.error} />
+    {filtered.length > 0 && <div className="pagination market-pagination"><span>Mostrando {((page - 1) * pageSize) + 1}–{Math.min(page * pageSize, filtered.length)} de {filtered.length} ativos · 20 por página</span><div><button disabled={page <= 1} onClick={() => setPage((current) => current - 1)}>← Anterior</button><span>Página {page} de {pageCount}</span><button disabled={page >= pageCount} onClick={() => setPage((current) => current + 1)}>Próxima →</button></div></div>}
     {!state.error && <div className="source-health"><span className="live-dot" /> Provedor respondendo · {quotes.length} ativos recebidos</div>}
   </section>
 }

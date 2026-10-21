@@ -56,7 +56,7 @@ Invoke-RestMethod http://localhost:8080/api/fixed-income/rates
 Invoke-RestMethod http://localhost:8080/api/news
 ```
 
-Na interface, navegue entre mercados, busque ativos por símbolo ou nome, ordene por nome/preço/variação/volume, filtre altas, baixas e acompanhados. Use as estrelas para montar sua lista e as setas na visão geral para organizar a ordem. O botão de alerta (♢) salva um limite para o ativo; ao atingir o preço, a interface avisa e pode enviar uma notificação do navegador.
+Na interface, navegue entre mercados, busque ativos por símbolo ou nome, ordene por nome/preço/variação/volume, filtre altas, baixas e acompanhados. A tabela mostra 20 ativos por página; use os controles no rodapé para navegar pelas demais páginas. Busca, filtros e ordenação são aplicados antes da paginação. Use as estrelas para montar sua lista e as setas na visão geral para organizar a ordem. O botão de alerta (♢) salva um limite para o ativo; ao atingir o preço, a interface avisa e pode enviar uma notificação do navegador.
 
 Ao selecionar um ativo, o gráfico permite consultar 1 dia, 1 semana ou 1 mês. Ele usa amostras coletadas pela API uma vez por minuto; o histórico começa a se formar após a inicialização e só sobrevive a reinícios quando PostgreSQL está configurado. O painel de mercado mostra a disponibilidade do provedor, quantidade de ativos e horário da última atualização.
 
