@@ -1,0 +1,17 @@
+import { useState,type FormEvent } from 'react'
+import { simulate } from '../../shared/api/fixedIncome'
+import type { Rate,Simulation } from '../../shared/types/api'
+import { brl } from '../../shared/lib/format'
+import { PanelTitle } from '../../shared/ui/MarketWidgets'
+export function FixedIncomePage({ rates, error, loading }: { rates: Rate[]; error: string; loading: boolean }) {
+  const [amount, setAmount] = useState('10000')
+  const [termDays, setTermDays] = useState('365')
+  const [cdb, setCdb] = useState('110')
+  const [lci, setLci] = useState('90')
+  const [lca, setLca] = useState('90')
+  const [result, setResult] = useState<Simulation | null>(null)
+  const [simulationError, setSimulationError] = useState('')
+  const [busy, setBusy] = useState(false)
+  async function submit(event: FormEvent) { event.preventDefault(); setBusy(true); setSimulationError(''); try { setResult(await simulate({ amount: Number(amount), termDays: Number(termDays), cdbPercentCDI: Number(cdb), lciPercentCDI: Number(lci), lcaPercentCDI: Number(lca) })) } catch (e) { setSimulationError(e instanceof Error ? e.message : 'Não foi possível simular.') } finally { setBusy(false) } }
+  return <><div className="rate-cards">{['SELIC', 'CDI', 'IPCA'].map((name) => { const rate = rates.find((item) => item.indicator === name); return <div className="panel rate-detail" key={name}><span className="card-label">{name}</span><strong>{rate ? `${rate.value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}${rate.unit}` : loading ? '…' : '—'}</strong><small>{rate ? `Fonte: ${rate.source}` : error || 'Indicador indisponível'}</small></div> })}</div><div className="panel simulator"><PanelTitle title="Simulador de renda fixa" subtitle="Compare uma projeção de CDB, LCI e LCA com a taxa CDI disponível." /><form className="sim-form" onSubmit={submit}><label>Valor aplicado <div className="input-prefix"><span>R$</span><input type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} required /></div></label><label>Prazo em dias<input type="number" min="1" max="36500" value={termDays} onChange={(e) => setTermDays(e.target.value)} required /></label><label>CDB (% do CDI)<input type="number" min="1" max="500" value={cdb} onChange={(e) => setCdb(e.target.value)} required /></label><label>LCI (% do CDI)<input type="number" min="1" max="500" value={lci} onChange={(e) => setLci(e.target.value)} required /></label><label>LCA (% do CDI)<input type="number" min="1" max="500" value={lca} onChange={(e) => setLca(e.target.value)} required /></label><button className="primary-button" disabled={busy}>{busy ? 'Calculando…' : 'Calcular projeção'}</button></form>{simulationError && <div className="form-error">{simulationError}</div>}{result && <div className="simulation-result"><div className="result-heading"><div><span className="card-label">PROJEÇÃO LÍQUIDA</span><p>CDI considerado: {result.cdiAnnualPercent.toLocaleString('pt-BR')}% a.a. · {result.estimatedBusinessDays} dias úteis estimados</p></div></div><div className="result-grid">{result.results.map((item) => <div className="result-card" key={item.product}><span>{item.product} <small>{item.incomeTaxPercent ? `IR ${item.incomeTaxPercent}%` : 'Isento de IR'}</small></span><b>{brl.format(item.netAmount)}</b><small>Rendimento líquido {brl.format(item.netProfit)}</small></div>)}</div><p className="assumption">{result.assumption}</p></div>}</div></>
+}

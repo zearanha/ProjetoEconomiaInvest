@@ -1,5 +1,27 @@
 # Frontend do Painel de Mercado
 
+## Organização do código
+
+O ponto de entrada `src/main.tsx` carrega o shell em `src/app/App.tsx`. O shell controla navegação e estado compartilhado; cada área mantém sua interface em um módulo de feature:
+
+```text
+src/
+  app/                 shell e navegação
+  features/
+    markets/           cotações, gráfico e alertas
+    overview/          resumo do painel
+    fixed-income/      taxas e simulador
+    news/              busca, filtros e notícias
+  shared/
+    api/               chamadas HTTP separadas por recurso
+    hooks/             recursos periódicos e WebSocket
+    lib/               formatação compartilhada
+    types/             contratos da API
+    ui/                tabela de cotações e elementos reutilizáveis
+```
+
+Novas páginas devem ficar em `features/`; estado e visual reutilizados entre áreas ficam em `shared/`. `src/api.ts` permanece como um barrel de compatibilidade para os módulos da API.
+
 ## Requisitos
 
 - Node.js 20.19+ ou 22.12+ e npm.

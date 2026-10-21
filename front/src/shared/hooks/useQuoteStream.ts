@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { Quote } from '../api'
+import type { Quote } from '../types/api'
 
 export type Market = 'crypto' | 'fx' | 'stocks'
 export type StreamStatus = 'connecting' | 'connected' | 'reconnecting'
