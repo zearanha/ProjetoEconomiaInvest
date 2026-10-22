@@ -32,7 +32,11 @@ type currency struct {
 }
 
 func (a *AwesomeAPI) Quotes(ctx context.Context) ([]domain.Quote, error) {
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"USD-BRL,EUR-BRL,GBP-BRL,JPY-BRL,BTC-BRL", nil)
+	pairs := make([]string, 0, len(currencies))
+	for _, currency := range currencies {
+		pairs = append(pairs, currency.code+"-BRL")
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+strings.Join(pairs, ","), nil)
 	if err != nil {
 		return nil, fmt.Errorf("criar requisição AwesomeAPI: %w", err)
 	}

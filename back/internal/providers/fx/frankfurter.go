@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"painel-mercado/internal/domain"
@@ -27,7 +28,7 @@ type frankfurterRate struct {
 func (f *Frankfurter) Quotes(ctx context.Context) ([]domain.Quote, error) {
 	query := url.Values{}
 	query.Set("base", "BRL")
-	query.Set("quotes", "USD,EUR,GBP,JPY")
+	query.Set("quotes", strings.Join(currencyCodes(), ","))
 	query.Set("from", time.Now().AddDate(0, 0, -14).Format("2006-01-02"))
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, frankfurterURL+"?"+query.Encode(), nil)
 	if err != nil {
@@ -45,7 +46,6 @@ func (f *Frankfurter) Quotes(ctx context.Context) ([]domain.Quote, error) {
 	if err := json.NewDecoder(response.Body).Decode(&rows); err != nil {
 		return nil, fmt.Errorf("decodificar Frankfurter: %w", err)
 	}
-	names := map[string]string{"USD": "Dólar americano", "EUR": "Euro", "GBP": "Libra esterlina", "JPY": "Iene japonês"}
 	type dailyRates struct{ previous, latest frankfurterRate }
 	byCurrency := make(map[string]dailyRates)
 	for _, row := range rows {
@@ -60,8 +60,8 @@ func (f *Frankfurter) Quotes(ctx context.Context) ([]domain.Quote, error) {
 		}
 	}
 	quotes := make([]domain.Quote, 0, len(byCurrency))
-	for _, currency := range []string{"USD", "EUR", "GBP", "JPY"} {
-		daily := byCurrency[currency]
+	for _, currency := range currencies {
+		daily := byCurrency[currency.code]
 		if daily.latest.Rate <= 0 {
 			continue
 		}
@@ -74,7 +74,7 @@ func (f *Frankfurter) Quotes(ctx context.Context) ([]domain.Quote, error) {
 			changePct = change / previousPrice * 100
 		}
 		quotes = append(quotes, domain.Quote{
-			Symbol: currency + "-BRL", Name: names[currency], Market: "fx", Currency: "BRL",
+			Symbol: currency.code + "-BRL", Name: currency.name, Market: "fx", Currency: "BRL",
 			Price: price, Change: change, ChangePct: changePct, UpdatedAt: updatedAt.UTC(),
 		})
 	}
