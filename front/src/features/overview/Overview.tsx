@@ -10,11 +10,12 @@ type States=Record<string,ResourceState<{market:string;data:Quote[]}>>
 export function Overview({ quotes, quoteState, rates, ratesError, news, newsError, watchlist, toggleWatch, moveWatch, go }: { quotes: Quote[]; quoteState: States; rates: Rate[]; ratesError: string; news: NewsItem[]; newsError: string; watchlist: string[]; toggleWatch: (symbol: string) => void; moveWatch: (symbol:string, offset:number) => void; go: (section: Section) => void }) {
   const watched = watchlist.flatMap((symbol) => quotes.filter((quote) => quote.symbol === symbol))
   const indices = rates.filter((rate) => ['SELIC', 'CDI', 'IPCA'].includes(rate.indicator))
+  const dollarQuote = quotes.find((quote) => quote.market === 'fx' && /^USD(?:-|$)/i.test(quote.symbol))
   return <>
     <section className="stat-grid">
       <StatCard label="Ibovespa" value={bestQuote(quotes, /IBOV/i)?.price} change={bestQuote(quotes, /IBOV/i)?.changePct} suffix=" pts" />
       <StatCard label="Bitcoin" value={bestQuote(quotes, /BTC/i)?.price} change={bestQuote(quotes, /BTC/i)?.changePct} currency="USD" />
-      <StatCard label="Dólar comercial" value={bestQuote(quotes, /USD|DOLAR/i)?.price} change={bestQuote(quotes, /USD|DOLAR/i)?.changePct} currency="BRL" />
+      <StatCard label="Dólar comercial" value={dollarQuote?.price} change={dollarQuote?.changePct} currency="BRL" />
       <div className="stat-card rate-card"><div className="card-label">TAXAS DE REFERÊNCIA</div>{indices.length ? indices.slice(0, 3).map((rate) => <div className="mini-rate" key={rate.indicator}><span>{rate.indicator}</span><b>{rate.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%</b></div>) : <div className="empty-inline">{ratesError || 'Carregando indicadores…'}</div>}</div>
     </section>
     <div className="content-grid"><section className="panel quotes-panel"><PanelTitle title="Acompanhe" subtitle="Ativos e moedas em destaque" action="Ver mercados" onAction={() => go('stocks')} />{watched.length ? <QuoteTable quotes={watched} watchlist={watchlist} toggleWatch={toggleWatch} moveWatch={moveWatch} /> : <div className="empty-state"><div className="empty-icon">☆</div><strong>Sua lista começa aqui</strong><span>Salve um ativo clicando na estrela ao lado da cotação.</span><button className="text-button" onClick={() => go('stocks')}>Explorar mercados <span>→</span></button></div>}</section>
