@@ -20,8 +20,6 @@ services:
         value: 5m
       - key: QUOTES_REFRESH_INTERVAL
         value: 1m
-      - key: MACRO_PROVIDER
-        value: bcb
 
   - type: web
     name: painel-mercado-front

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strings"
@@ -47,47 +48,93 @@ type result struct {
 }
 
 func (b *Brapi) Quotes(ctx context.Context) ([]domain.Quote, error) {
+	var quotes []domain.Quote
 	if b.token == "" || len(b.symbols) == 0 {
-		return b.publicQuotes(ctx)
+		var err error
+		quotes, err = b.publicQuotes(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		query := url.Values{}
+		query.Set("symbols", strings.Join(b.symbols, ","))
+		request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"?"+query.Encode(), nil)
+		if err != nil {
+			return nil, fmt.Errorf("criar requisição brapi: %w", err)
+		}
+		if b.token != "" {
+			request.Header.Set("Authorization", "Bearer "+b.token)
+		}
+		resp, err := b.client.Do(request)
+		if err != nil {
+			return nil, fmt.Errorf("consultar brapi: %w", err)
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("brapi respondeu HTTP %d", resp.StatusCode)
+		}
+		var body response
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			return nil, fmt.Errorf("decodificar resposta brapi: %w", err)
+		}
+		quotes = make([]domain.Quote, 0, len(body.Results)+1)
+		for _, row := range body.Results {
+			symbol := row.Symbol
+			if symbol == "" {
+				symbol = row.RequestedSymbol
+			}
+			updatedAt, _ := time.Parse(time.RFC3339, row.Data.RegularMarketTime)
+			quotes = append(quotes, domain.Quote{
+				Symbol: symbol, Name: row.Data.ShortName, Market: "stocks",
+				Currency: row.Data.Currency, Price: row.Data.RegularMarketPrice,
+				Change: row.Data.RegularMarketChange, ChangePct: row.Data.RegularMarketChangePct,
+				Volume: row.Data.RegularMarketVolume, High: row.Data.RegularMarketDayHigh,
+				Low: row.Data.RegularMarketDayLow, UpdatedAt: updatedAt.UTC(),
+			})
+		}
 	}
 
-	query := url.Values{}
-	query.Set("symbols", strings.Join(b.symbols, ","))
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, baseURL+"?"+query.Encode(), nil)
+	index, indexErr := yahooIbovespa(ctx, b.client)
+	if indexErr != nil && b.token != "" {
+		index, indexErr = b.ibovespa(ctx)
+	}
+	if indexErr != nil {
+		slog.Warn("falha ao consultar Ibovespa; mantendo cotações de ações", "error", indexErr)
+	} else {
+		quotes = append(quotes, index)
+	}
+	return quotes, nil
+}
+
+func (b *Brapi) ibovespa(ctx context.Context) (domain.Quote, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://brapi.dev/api/quote/%5EBVSP", nil)
 	if err != nil {
-		return nil, fmt.Errorf("criar requisição brapi: %w", err)
+		return domain.Quote{}, fmt.Errorf("criar requisição Ibovespa: %w", err)
 	}
-	if b.token != "" {
-		request.Header.Set("Authorization", "Bearer "+b.token)
-	}
+	request.Header.Set("Authorization", "Bearer "+b.token)
 	resp, err := b.client.Do(request)
 	if err != nil {
-		return nil, fmt.Errorf("consultar brapi: %w", err)
+		return domain.Quote{}, fmt.Errorf("consultar Ibovespa na brapi: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("brapi respondeu HTTP %d", resp.StatusCode)
+		return domain.Quote{}, fmt.Errorf("brapi respondeu HTTP %d ao consultar Ibovespa", resp.StatusCode)
 	}
 	var body response
 	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
-		return nil, fmt.Errorf("decodificar resposta brapi: %w", err)
+		return domain.Quote{}, fmt.Errorf("decodificar cotação Ibovespa: %w", err)
 	}
-	quotes := make([]domain.Quote, 0, len(body.Results))
-	for _, row := range body.Results {
-		symbol := row.Symbol
-		if symbol == "" {
-			symbol = row.RequestedSymbol
-		}
-		updatedAt, _ := time.Parse(time.RFC3339, row.Data.RegularMarketTime)
-		quotes = append(quotes, domain.Quote{
-			Symbol: symbol, Name: row.Data.ShortName, Market: "stocks",
-			Currency: row.Data.Currency, Price: row.Data.RegularMarketPrice,
-			Change: row.Data.RegularMarketChange, ChangePct: row.Data.RegularMarketChangePct,
-			Volume: row.Data.RegularMarketVolume, High: row.Data.RegularMarketDayHigh,
-			Low: row.Data.RegularMarketDayLow, UpdatedAt: updatedAt.UTC(),
-		})
+	if len(body.Results) == 0 {
+		return domain.Quote{}, fmt.Errorf("brapi não retornou cotação do Ibovespa")
 	}
-	return quotes, nil
+	row := body.Results[0]
+	updatedAt, _ := time.Parse(time.RFC3339, row.Data.RegularMarketTime)
+	return domain.Quote{
+		Symbol: "^BVSP", Name: "Ibovespa", Market: "stocks", Currency: row.Data.Currency,
+		Price: row.Data.RegularMarketPrice, Change: row.Data.RegularMarketChange,
+		ChangePct: row.Data.RegularMarketChangePct, Volume: row.Data.RegularMarketVolume,
+		High: row.Data.RegularMarketDayHigh, Low: row.Data.RegularMarketDayLow, UpdatedAt: updatedAt.UTC(),
+	}, nil
 }
 
 type publicQuoteListResponse struct {

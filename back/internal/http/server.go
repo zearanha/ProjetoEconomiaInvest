@@ -121,7 +121,7 @@ func (s *Server) getFixedIncomeRates(w http.ResponseWriter, r *http.Request) {
 	rates, err := s.fixedIncome.Rates(ctx)
 	if err != nil {
 		s.logger.Error("falha ao buscar indicadores de renda fixa", "error", err)
-		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "indicadores indisponíveis no momento"})
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": "fontes públicas de renda fixa indisponíveis no momento"})
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"data": rates})

@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
@@ -16,6 +15,7 @@ import (
 	"painel-mercado/internal/jobs"
 	"painel-mercado/internal/providers"
 	bcbprovider "painel-mercado/internal/providers/bcb"
+	brasilapiprovider "painel-mercado/internal/providers/brasilapi"
 	cryptoprovider "painel-mercado/internal/providers/crypto"
 	fxprovider "painel-mercado/internal/providers/fx"
 	rssprovider "painel-mercado/internal/providers/rss"
@@ -48,17 +48,9 @@ func main() {
 		stockprovider.NewBrapi(client, cfg.BrapiToken, cfg.StockSymbols),
 	)
 	var quoteHistory repository.QuoteHistory = repository.NewMemoryQuoteHistory()
-	var rateProvider providers.Rates
-	switch strings.ToLower(cfg.MacroProvider) {
-	case "brapi":
-		if cfg.BrapiToken == "" {
-			logger.Error("MACRO_PROVIDER=brapi exige BRAPI_TOKEN; usando SGS do Banco Central")
-			rateProvider = bcbprovider.NewSGS(client)
-		} else {
-			rateProvider = bcbprovider.NewBrapiMacro(client, cfg.BrapiToken)
-		}
-	default:
-		rateProvider = bcbprovider.NewSGS(client)
+	rateProvider := providers.RatesFallback{
+		Primary:   brasilapiprovider.NewRates(client),
+		Secondary: bcbprovider.NewSGS(client),
 	}
 	fixedIncome := service.NewFixedIncome(rateProvider)
 	var newsRepo repository.News = repository.NewMemoryNews()
